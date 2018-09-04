@@ -31,7 +31,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
   // Create Gaussian distributions for each of the three position variables
   normal_distribution<double> dist_x(x, std[0]);
   normal_distribution<double> dist_y(y, std[1]);
-  normal_distribution<double> dist_theta(theta, std[2]);
+  normal_distribution<double> dist_th(theta, std[2]);
 
   for (int i=0; i < num_particles; ++i) {
     
@@ -40,7 +40,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     particle.id = i;
     particle.x  = dist_x(gen);
     particle.y  = dist_y(gen);
-    particle.theta = dist_theta(gen);
+    particle.theta = dist_th(gen);
     particle.weight = 1;
 
     // Add particle to the particles member variable
@@ -53,10 +53,44 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
-	// TODO: Add measurements to each particle and add random Gaussian noise.
-	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
-	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
-	//  http://www.cplusplus.com/reference/random/default_random_engine/
+  // TODO: Add measurements to each particle and add random Gaussian noise.
+  // NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
+  //  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
+  //  http://www.cplusplus.com/reference/random/default_random_engine/
+  
+  // Creating Gaussian distributions for each of the three position variables
+  // Reinitializing the same distributions in each loop seems somewhat inefficient..
+  normal_distribution<double> dist_x(0, std_pos[0]);
+  normal_distribution<double> dist_y(0, std_pos[1]);
+  normal_distribution<double> dist_th(0, std_pos[2]);
+  
+  // for readability
+  double v = velocity;
+
+  // update location prediction and include position noise
+  // process is different yaw_rate is 0
+  if (yaw_rate > 0.001 || yaw_rate < -0.001) {
+    for (int i=0; i < particles.size(); ++i) {
+	  
+	  // for readability	
+      double th_0 = particles[i].theta;
+                                                                                          // noise addition
+      particles[i].x     += v/yaw_rate * ( sin(th_0 + yaw_rate*delta_t) - sin(th_0))      +  dist_x(gen);
+      particles[i].y     += v/yaw_rate * (-cos(th_0 + yaw_rate*delta_t) + cos(th_0))      +  dist_y(gen);
+      particles[i].theta += delta_t * yaw_rate                                            + dist_th(gen);
+	}
+  }
+  else {
+    for (int i=0; i < particles.size(); ++i) {
+      
+      // for readability
+      double th_0 = particles[i].theta;
+	                                                     // noise addition
+      particles[i].x     += v * cos(th_0) * delta_t      +  dist_x(gen);
+      particles[i].y     += v * sin(th_0) * delta_t      +  dist_y(gen);
+      particles[i].theta +=                                dist_th(gen);
+	}
+  }
 
 }
 
