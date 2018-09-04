@@ -2,6 +2,9 @@
 term2_sim_mac
 src/*.swp
 
+# added by Anner for Sublime text
+*sublime*
+
 # silly macOS
 .DS_Store
 

@@ -68,18 +68,23 @@ int main()
           if (!pf.initialized()) {
 
           	// Sense noisy position data from the simulator
-			double sense_x = std::stod(j[1]["sense_x"].get<std::string>());
-			double sense_y = std::stod(j[1]["sense_y"].get<std::string>());
-			double sense_theta = std::stod(j[1]["sense_theta"].get<std::string>());
+			      double sense_x = std::stod(j[1]["sense_x"].get<std::string>());
+			      double sense_y = std::stod(j[1]["sense_y"].get<std::string>());
+			      double sense_theta = std::stod(j[1]["sense_theta"].get<std::string>());
 
-			pf.init(sense_x, sense_y, sense_theta, sigma_pos);
-		  }
+			      pf.init(sense_x, sense_y, sense_theta, sigma_pos);
+
+            for (int i=0; i < pf.particles.size(); ++i) {
+              std::cout << "particle #" << pf.particles[i].id << " x: " << pf.particles[i].x << endl;
+            }
+
+		      }
 		  else {
 			// Predict the vehicle's next state from previous (noiseless control) data.
 		  	double previous_velocity = std::stod(j[1]["previous_velocity"].get<std::string>());
-			double previous_yawrate = std::stod(j[1]["previous_yawrate"].get<std::string>());
+			  double previous_yawrate = std::stod(j[1]["previous_yawrate"].get<std::string>());
 
-			pf.prediction(delta_t, sigma_pos, previous_velocity, previous_yawrate);
+			  pf.prediction(delta_t, sigma_pos, previous_velocity, previous_yawrate);
 		  }
 
 		  // receive noisy observation data from the simulator
