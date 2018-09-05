@@ -58,6 +58,32 @@ inline double dist(double x1, double y1, double x2, double y2) {
 	return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
+
+/*
+ * Computes the multivariate gaussian for two 2D points
+ * @param (x, y) x and y coordinates of first point
+ * @param (mu_x, mu_y) x and y coordinates of second point / base point
+ * @output multivariate gaussian probability for both points
+ */
+inline double MultivariateGaussian(double x, double mu_x, double y, double mu_y, double sig_x, double sig_y) {
+	// std::cout << "calculating multi variate for:" << std::endl;
+	// std::cout << "x: " << x << ", y: " << y << ", mu_x: " << mu_x << ", mu_y: " << mu_y << ", sig_x: " << sig_x << ", sig_y: " << sig_y << std::endl;
+	double denom = 2*M_PI * sig_x * sig_y;
+	double exp_x = pow(x-mu_x, 2) / (2 * pow(sig_x, 2));
+	double exp_y = pow(y-mu_y, 2) / (2 * pow(sig_y, 2));
+	// std::cout << "Multivariate prob: " << exp(-(exp_x + exp_y)) / denom << std::endl;
+	return exp(-(exp_x + exp_y)) / denom;
+}
+/*
+ * maps 2 landmark objects into the above MultivariateGaussian function
+ */
+inline double MultivariateGaussian_Landmarks(const LandmarkObs &obs, const LandmarkObs &pred, double std_landmark[]) {
+	return MultivariateGaussian(obs.x, pred.x, obs.y, pred.y, std_landmark[0], std_landmark[1]);
+}
+
+
+
+
 inline double * getError(double gt_x, double gt_y, double gt_theta, double pf_x, double pf_y, double pf_theta) {
 	static double error[3];
 	error[0] = fabs(pf_x - gt_x);

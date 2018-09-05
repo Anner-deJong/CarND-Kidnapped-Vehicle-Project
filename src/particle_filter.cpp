@@ -70,63 +70,56 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
   // update location prediction and include position noise
   // process is different yaw_rate is 0
   if (yaw_rate > 0.001 || yaw_rate < -0.001) {
-    for (int i=0; i < particles.size(); ++i) {
+    for (auto &p: particles) {
 	  
-	  // for readability	
-      double th_0 = particles[i].theta;
-                                                                                          // noise addition
-      particles[i].x     += v/yaw_rate * ( sin(th_0 + yaw_rate*delta_t) - sin(th_0))      +  dist_x(gen);
-      particles[i].y     += v/yaw_rate * (-cos(th_0 + yaw_rate*delta_t) + cos(th_0))      +  dist_y(gen);
-      particles[i].theta += delta_t * yaw_rate                                            + dist_th(gen);
+      // make sure to update p.x and p.y before p.theta                              // noise addition
+      p.x     += v/yaw_rate * ( sin(p.theta + yaw_rate*delta_t) - sin(p.theta))      +  dist_x(gen);
+      p.y     += v/yaw_rate * (-cos(p.theta + yaw_rate*delta_t) + cos(p.theta))      +  dist_y(gen);
+      p.theta += delta_t * yaw_rate                                                  + dist_th(gen);
 	}
   }
   else {
-    for (int i=0; i < particles.size(); ++i) {
+    for (auto &p: particles) {
       
-      // for readability
-      double th_0 = particles[i].theta;
-	                                                     // noise addition
-      particles[i].x     += v * cos(th_0) * delta_t      +  dist_x(gen);
-      particles[i].y     += v * sin(th_0) * delta_t      +  dist_y(gen);
-      particles[i].theta +=                                dist_th(gen);
+	  // make sure to update p.x and p.y before p.theta   // noise addition
+      p.x     += v * cos(p.theta) * delta_t               +  dist_x(gen);
+      p.y     += v * sin(p.theta) * delta_t               +  dist_y(gen);
+      p.theta +=                                            dist_th(gen);
 	}
   }
 
 }
 
-void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
+LandmarkObs ParticleFilter::dataAssociation(const LandmarkObs &observation, const std::vector<LandmarkObs> &predicted) {
 	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
+  // std::cout << "getting into dataAssociation" << std::endl;
+  // std::cout << "obs.x: " << observation.x, ", obs.y: " << observation.y << std::endl;
 
-	// loop over all observations
-	for (int i=0; i < observations.size(); ++i) {
+	// assign first prediction landmark as the closest landmark
+	double min_distance = dist(observation.x, observation.y, predicted[0].x, predicted[0].y);
+	LandmarkObs min_dist_pred = predicted[0];
 
-		LandmarkObs &obs  = observations[i];
+	// loop over all predictions
+	for (auto &pred: predicted) {
 
-		// assign first prediction landmark as the closest landmark
-		double min_distance = dist(obs.x, obs.y, predicted[0].x, predicted[0].y);
-		obs.id = predicted[0].id;
+		double distance   = dist(observation.x, observation.y, pred.x, pred.y);
 
-		// for each next observation, find the closest neighbour in all predicted landmarks
-		for (int j=1; j < predicted.size(); ++j) {
-			
-			// for readability
-			LandmarkObs &pred = predicted[j];
+		if (distance < min_distance) {
 
-			double distance   = dist(obs.x, obs.y, pred.x, pred.y);
-			
-			if (distance < min_distance) {
-
-				min_distance = distance;
-				obs.id = pred.id;
-			}
-
+			min_distance  = distance;
+			min_dist_pred = pred;
 		}
 
 	}
-	
+
+// std::cout << "closest chosen prediction" << std::endl;
+// std::cout << "pred.x: " << min_dist_pred.x, ", pred.y: " << min_dist_pred.y << std::endl;
+
+	return min_dist_pred;
+
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -141,6 +134,55 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+
+  // get the sum of the weights for normalizing
+  double weights_sum = 0;
+
+  // for each particle, calculate the new weight
+	for (auto &p: particles){
+
+		// get all map landmarks within sensor range
+		std::vector<LandmarkObs> predicted;
+
+		for (auto &lm: map_landmarks.landmark_list) {
+			if (dist(p.x, p.y, lm.x_f, lm.y_f) < sensor_range) {
+				LandmarkObs pred;
+			    pred.id = lm.id_i;
+			    pred.x  = lm.x_f;
+			    pred.y  = lm.y_f;
+			    predicted.push_back(pred);
+			}
+		}
+
+    // this will become the updated weight
+    double new_weight = 1;
+		
+    // get partial weight for each observation:
+		for (auto &ob: observations) {
+
+			// transform observation into map coordinates
+			LandmarkObs tobs;
+			tobs.x = cos(p.theta)*ob.x - sin(p.theta)*ob.y + p.x;
+			tobs.y = sin(p.theta)*ob.x + cos(p.theta)*ob.y + p.y;
+
+			// get closest prediction
+			LandmarkObs closest_pred = dataAssociation(tobs, predicted);
+
+			// use multi variate gaussian density function to update weights
+			new_weight *= MultivariateGaussian_Landmarks(tobs, closest_pred, std_landmark);
+		}
+
+		// update the particle's weight, and keep track of the sum
+		p.weight     = new_weight;
+    weights_sum += new_weight;
+
+	}
+
+	// normalize weights into sum=0 range
+  for (auto &p: particles){
+    p.weight /= weights_sum;
+  }
+
 }
 
 void ParticleFilter::resample() {

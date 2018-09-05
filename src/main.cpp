@@ -74,10 +74,6 @@ int main()
 
 			      pf.init(sense_x, sense_y, sense_theta, sigma_pos);
 
-            for (int i=0; i < pf.particles.size(); ++i) {
-              std::cout << "particle #" << pf.particles[i].id << " x: " << pf.particles[i].x << endl;
-            }
-
 		      }
 		  else {
 			// Predict the vehicle's next state from previous (noiseless control) data.
@@ -117,6 +113,12 @@ int main()
 
 		  // Update the weights and resample
 		  pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
+
+
+      // for (auto &p: pf.particles) {
+      //   std::cout << "particle #" << p.id << " w: " << p.weight << endl;
+      // }
+
 		  pf.resample();
 
 		  // Calculate and output the average weighted error of the particle filter over all time steps so far.
