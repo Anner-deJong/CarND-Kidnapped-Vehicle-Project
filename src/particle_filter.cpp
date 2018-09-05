@@ -45,6 +45,9 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 
     // Add particle to the particles member variable
     particles.push_back(particle);
+
+    // keep track of particles' weights
+    weights.push_back(1);
   }
 
   // Initialize only once
@@ -119,7 +122,6 @@ LandmarkObs ParticleFilter::dataAssociation(const LandmarkObs &observation, cons
 // std::cout << "pred.x: " << min_dist_pred.x, ", pred.y: " << min_dist_pred.y << std::endl;
 
 	return min_dist_pred;
-
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -178,9 +180,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 	}
 
-	// normalize weights into sum=0 range
-  for (auto &p: particles){
-    p.weight /= weights_sum;
+	// normalize weights into sum=1
+  for (int i=0; i<particles.size(); ++i){
+    particles[i].weight /= weights_sum;
+    weights[i] = particles[i].weight;
   }
 
 }
@@ -189,6 +192,18 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+  
+  // this distribution doesn't actually require normalized weights
+  std::discrete_distribution<> distr(weights.begin(), weights.end());
+
+  // // build up new vector of particles by sampling through the distribution
+  std::vector<Particle> resampled_particles;
+  for (int i=0; i<num_particles; ++i) {
+    resampled_particles.push_back(particles[distr(gen)]);
+  }
+
+  // make the new resampled vector the current one
+  particles = resampled_particles;
 
 }
 
