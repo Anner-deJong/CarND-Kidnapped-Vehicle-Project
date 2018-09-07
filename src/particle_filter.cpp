@@ -41,7 +41,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     particle.x  = dist_x(gen);
     particle.y  = dist_y(gen);
     particle.theta = dist_th(gen);
-    particle.weight = 1;
+    particle.weight = 1; // keeping track of the weights inside the vector 'weight' is enough actually
 
     // Add particle to the particles member variable
     particles.push_back(particle);
@@ -137,11 +137,15 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 
+  // NOTE 1: no need to normalize for the std::discrete_distribution function
   // get the sum of the weights for normalizing
-  double weights_sum = 0;
+  // double weights_sum = 0;
 
   // for each particle, calculate the new weight
-	for (auto &p: particles){
+	for (int i=0; i<particles.size(); ++i){
+
+    // for readability
+    Particle &p = particles[i];
 
 		// get all map landmarks within sensor range
 		std::vector<LandmarkObs> predicted;
@@ -174,17 +178,22 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			new_weight *= MultivariateGaussian_Landmarks(tobs, closest_pred, std_landmark);
 		}
 
+    // NOTE 1: no need to normalize for the std::discrete_distribution function
 		// update the particle's weight, and keep track of the sum
-		p.weight     = new_weight;
-    weights_sum += new_weight;
+		// keeping track of weights inside the member variable vector weights is enough actually
+    p.weight   = new_weight;
+    // weights_sum += new_weight;
+    weights[i] = new_weight;
 
 	}
 
+  // NOTE 1: no need to normalize for the std::discrete_distribution function
+  // saving an extra for loop over all particles / weight entries
 	// normalize weights into sum=1
-  for (int i=0; i<particles.size(); ++i){
-    particles[i].weight /= weights_sum;
-    weights[i] = particles[i].weight;
-  }
+  // for (int i=0; i<particles.size(); ++i){
+  //   particles[i].weight /= weights_sum;
+  //   weights[i] = particles[i].weight;
+  // }
 
 }
 
@@ -219,7 +228,8 @@ Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<i
     particle.sense_x = sense_x;
     particle.sense_y = sense_y;
 
-    //return particle
+    return particle; // this was commented out which results in a warning.
+    // no error however so this function is likely not called
 }
 
 string ParticleFilter::getAssociations(Particle best)
